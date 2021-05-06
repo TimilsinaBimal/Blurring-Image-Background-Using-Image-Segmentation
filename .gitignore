@@ -1,4 +1,4 @@
-data/
+data/*
 .virtual_documents/
 */.virtual_documents/
 .vscode
