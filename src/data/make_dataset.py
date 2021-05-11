@@ -43,10 +43,11 @@ class Dataset:
 
     def prepare_dataset(self, images, masks):
         for idx in range(len(images)):
-            image_path = os.path.join(self.BASE_IMAGE_DIR, images[idx])
+            image_path = os.path.join(
+                self.BASE_IMAGE_DIR, images[idx].decode())
             img = self.prepare_image(image_path)
 
-            mask_path = os.path.join(self.BASE_MASK_DIR, masks[idx])
+            mask_path = os.path.join(self.BASE_MASK_DIR, masks[idx].decode())
             mask = self.prepare_image(mask_path, masks=True)
             yield img, mask
 

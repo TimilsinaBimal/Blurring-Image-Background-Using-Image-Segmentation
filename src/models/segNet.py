@@ -15,15 +15,13 @@ def VGG_Model():
         'block2_conv2',
         'block3_conv3',
         'block4_conv3',
-        'block5_conv3'
+        'block5_conv3',
+        'block5_pool',
     ]
-    vgg.trainable = False
-    intermediate_outputs = [vgg.get_layer(
-        layer).output for layer in output_layers]
-    final_output = vgg.output
+    output = [vgg.get_layer(layer).output for layer in output_layers]
 
-    model = models.Model([vgg.input], [
-        final_output, intermediate_outputs])
+    model = models.Model(inputs=vgg.input, outputs=output)
+    model.trainable = False
     return model
 
 
@@ -41,19 +39,18 @@ class CNNBlock(layers.Layer):
 
 
 class BlockLayer(layers.Layer):
-    def __init__(self, out_channels, kernel_size=2, padding="SAME", pool_size=2, no_layers=3):
+    def __init__(self, out_channels, kernel_size=3, padding="SAME", no_layers=3):
         super(BlockLayer, self).__init__()
         self.no_layers = no_layers
-        self.cnn1 = CNNBlock(out_channels)
-        self.cnn2 = CNNBlock(out_channels)
+        self.cnn1 = CNNBlock(out_channels[0])
+        self.cnn2 = CNNBlock(out_channels[1])
         if self.no_layers == 3:
-            self.cnn3 = CNNBlock(out_channels)
+            self.cnn3 = CNNBlock(out_channels[2])
         self.upsampling = layers.UpSampling2D()
         self.add = layers.Add()
 
     def call(self, input_tensor, training=False, intermediate_op=None):
         x = self.upsampling(input_tensor)
-        # print(f"OP SHAPE: {intermediate_op.shape}, ORG SHAPE: {x.shape}")
         x = self.add([x, intermediate_op])
         x = self.cnn1(x)
         x = self.cnn2(x)
@@ -66,21 +63,21 @@ class SegNet(models.Model):
     def __init__(self):
         super(SegNet, self).__init__()
         self.encoder = VGG_Model()
-        self.block1 = BlockLayer(512)
-        self.block2 = BlockLayer(256)
-        self.block3 = BlockLayer(128)
-        self.block4 = BlockLayer(64, no_layers=2)
-        self.block5 = BlockLayer(3, kernel_size=1, no_layers=2)
+        self.block1 = BlockLayer([512, 512, 512])
+        self.block2 = BlockLayer([256, 256, 256])
+        self.block3 = BlockLayer([128, 128, 128])
+        self.block4 = BlockLayer([64, 64], no_layers=2)
+        self.block5 = BlockLayer([64, 2], no_layers=2)
         self.softmax = layers.Softmax()
 
     def call(self, input_tensor, training=False):
         x = self.encoder(input_tensor)
-        a1, a2, a3, a4, a5 = x[1][:]
-        x = self.block1(x[0], intermediate_op=a5)
-        x = self.block2(x, intermediate_op=a4)
+        x, a1, a2, a3, a4, a5 = reversed(x)
+        x = self.block1(x, intermediate_op=a1)
+        x = self.block2(x, intermediate_op=a2)
         x = self.block3(x, intermediate_op=a3)
-        x = self.block4(x, intermediate_op=a2)
-        x = self.block5(x, intermediate_op=a1)
+        x = self.block4(x, intermediate_op=a4)
+        x = self.block5(x, intermediate_op=a5)
         x = self.softmax(x)
         return x
 
