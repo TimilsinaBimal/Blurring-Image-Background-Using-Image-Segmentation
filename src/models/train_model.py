@@ -5,6 +5,8 @@ from src.models.segNet import SegNet
 from src.data.make_dataset import Dataset
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = 2
 
+
+ROOT_DIR = Path(__file__).parent.parent.parent
 model = SegNet()
 
 model.compile(
@@ -12,12 +14,13 @@ model.compile(
     loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
     metrics=['accuracy']
 )
-dataset = Dataset(base_dir=Path(__file__).parent.parent.parent, batch_size=1)
-train_dataset = dataset.make()
-test_dataset = dataset.make(training=False)
+dataset = Dataset(root_dir=ROOT_DIR,
+                  batch_size=1, validation=True)
+
+train_dataset, validation_dataset, test_dataset = dataset.make()
 
 model_checkpoint = tf.keras.callbacks.ModelCheckpoint(
-    filepath='../../models/segnet/', monitor='val_accuracy', verbose=1, save_best_only=True,
+    filepath=os.path.join(ROOT_DIR, "models/segnet/"), monitor='val_accuracy', verbose=1, save_best_only=True,
     save_weights_only=True, mode='max', save_freq='epoch'
 )
 
