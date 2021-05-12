@@ -1,4 +1,6 @@
 data/*
-.virtual_documents/
-*/.virtual_documents/
+.virtual_documents
 .vscode
+__pycache__
+models/
+.env
