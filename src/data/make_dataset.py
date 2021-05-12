@@ -14,9 +14,9 @@ class Dataset:
         repeat: (default=True) Whether to repeat data while training
     """
 
-    def __init__(self, base_dir, batch_size, image_size=(224, 224, 3), BUFFER_SIZE=100, validation=False):
+    def __init__(self, root_dir, batch_size, image_size=(224, 224, 3), BUFFER_SIZE=100, validation=False):
         self.IMAGE_HEIGHT, self.IMAGE_WIDTH, self.CHANNELS = image_size
-        self.ROOT_DIR = base_dir
+        self.ROOT_DIR = root_dir
         self.DATA_DIR = "data/raw/"
         self.BATCH_SIZE = batch_size
         self.BUFFER_SIZE = BUFFER_SIZE
@@ -32,11 +32,11 @@ class Dataset:
 
     def split_data(self, test_size=0.25, val_size=0.15):
         train_images, test_images, train_masks, test_masks = train_test_split(
-            self.get_file(self.BASE_IMAGE_DIR), self.get_file(self.BASE_MASK_DIR), test_size=val_size)
+            self.get_file(self.BASE_IMAGE_DIR), self.get_file(self.BASE_MASK_DIR), test_size=val_size, random_state=42)
 
         if self.validation:
             train_images, val_images, train_masks, val_masks = train_test_split(
-                train_images, train_masks, test_size=test_size)
+                train_images, train_masks, test_size=test_size, random_state=42)
 
             return train_images, val_images, test_images, train_masks, val_masks, test_masks
 
@@ -81,19 +81,21 @@ class Dataset:
         dataset = dataset.prefetch(buffer_size=tf.data.AUTOTUNE)
         return dataset
 
-    def make(self, training=True, validation=False):
+    def make(self):
         if self.validation:
             train_images, val_images, test_images, train_masks, val_masks, test_masks = self.split_data()
+            validation_dataset = self.make_dataset(
+                val_images, val_masks, training=False)
         else:
             train_images, test_images, train_masks, test_masks = self.split_data()
 
-        if training:
-            dataset = self.make_dataset(train_images, train_masks)
-        elif validation:
-            dataset = self.make_dataset(
-                val_images, val_masks, training=False)
-        else:
-            dataset = self.make_dataset(
-                test_images, test_masks, training=False)
+        train_dataset = self.make_dataset(
+            train_images, train_masks, training=True)
 
-        return dataset
+        test_dataset = self.make_dataset(
+            test_images, test_masks, training=False)
+
+        if self.validation:
+            return train_dataset, validation_dataset, test_dataset
+        else:
+            return train_dataset, test_dataset
