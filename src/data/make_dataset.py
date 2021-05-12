@@ -14,21 +14,32 @@ class Dataset:
         repeat: (default=True) Whether to repeat data while training
     """
 
-    def __init__(self, base_dir, batch_size, image_size=(224, 224, 3), repeat=True):
+    def __init__(self, base_dir, batch_size, image_size=(224, 224, 3), BUFFER_SIZE=100, validation=False):
         self.IMAGE_HEIGHT, self.IMAGE_WIDTH, self.CHANNELS = image_size
-        self.BASE_DIR = base_dir
+        self.ROOT_DIR = base_dir
+        self.DATA_DIR = "data/raw/"
         self.BATCH_SIZE = batch_size
-        self.repeat = repeat
-        self.BASE_IMAGE_DIR = os.path.join(self.BASE_DIR, "images/")
-        self.BASE_MASK_DIR = os.path.join(self.BASE_DIR, "masks/")
+        self.BUFFER_SIZE = BUFFER_SIZE
+        self.validation = validation
+        self.BASE_IMAGE_DIR = os.path.join(
+            self.ROOT_DIR, self.DATA_DIR, "images/")
+        self.BASE_MASK_DIR = os.path.join(
+            self.ROOT_DIR, self.DATA_DIR, "masks")
 
     def get_file(self, _path):
         for (_, _, files) in os.walk(_path):
             return files
 
-    def split_data(self, test_size=0.2):
+    def split_data(self, test_size=0.25, val_size=0.15):
         train_images, test_images, train_masks, test_masks = train_test_split(
-            self.get_file(self.BASE_IMAGE_DIR), self.get_file(self.BASE_MASK_DIR), test_size=test_size)
+            self.get_file(self.BASE_IMAGE_DIR), self.get_file(self.BASE_MASK_DIR), test_size=val_size)
+
+        if self.validation:
+            train_images, val_images, train_masks, val_masks = train_test_split(
+                train_images, train_masks, test_size=test_size)
+
+            return train_images, val_images, test_images, train_masks, val_masks, test_masks
+
         return train_images, test_images, train_masks, test_masks
 
     def prepare_image(self, file_path, masks=False):
@@ -63,17 +74,26 @@ class Dataset:
             )
         )
         if training:
-            dataset = dataset.repeat().batch(self.BATCH_SIZE)
+            dataset = dataset.shuffle(
+                self.BUFFER_SIZE).repeat().batch(self.BATCH_SIZE)
         else:
             dataset = dataset.batch(self.BATCH_SIZE)
         dataset = dataset.prefetch(buffer_size=tf.data.AUTOTUNE)
         return dataset
 
-    def make(self, training=True):
-        train_images, test_images, train_masks, test_masks = self.split_data()
+    def make(self, training=True, validation=False):
+        if self.validation:
+            train_images, val_images, test_images, train_masks, val_masks, test_masks = self.split_data()
+        else:
+            train_images, test_images, train_masks, test_masks = self.split_data()
+
         if training:
             dataset = self.make_dataset(train_images, train_masks)
+        elif validation:
+            dataset = self.make_dataset(
+                val_images, val_masks, training=False)
         else:
             dataset = self.make_dataset(
                 test_images, test_masks, training=False)
+
         return dataset
