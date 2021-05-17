@@ -1,14 +1,14 @@
 import os
 from pathlib import Path
 import tensorflow as tf
-from src.models.segNet import SegNet
+from src.models.models import SegNet, UNet
 from src.data.make_dataset import Dataset
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 
-def checkpoints():
+def checkpoints() -> list:
     model_checkpoint = tf.keras.callbacks.ModelCheckpoint(
-        filepath=os.path.join(ROOT_DIR, "models/segnet/"), monitor='val_accuracy', verbose=1, save_best_only=True,
+        filepath=os.path.join(ROOT_DIR, "models/unet/"), monitor='val_accuracy', verbose=1, save_best_only=True,
         save_weights_only=True, mode='max', save_freq='epoch'
     )
 
@@ -21,7 +21,9 @@ def checkpoints():
 
 def train():
     # Get Model and Compile it
-    model = SegNet()
+    # model = SegNet()
+    model = UNet(1)
+    model.summary()
     model.compile(
         optimizer=tf.keras.optimizers.SGD(learning_rate=0.1, momentum=0.9),
         loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
