@@ -4,17 +4,16 @@ from sklearn.model_selection import train_test_split
 
 
 class Dataset:
-    """
-        Preprocess the dataset from raw dataset to train model.
-        ARGUMENTS
-        ---
-        base_dir: Base data directory path
-        batch_size: Batch size to generate
-        image_size: [default (224,224,3)] Size of image
-        repeat: (default=True) Whether to repeat data while training
-    """
-
     def __init__(self, root_dir, batch_size, image_size=(224, 224, 3), BUFFER_SIZE=100, validation=False):
+        """
+            Preprocess the dataset from raw dataset to train model.
+            ARGUMENTS
+            ---
+            base_dir: Base data directory path
+            batch_size: Batch size to generate
+            image_size: [default (224,224,3)] Size of image
+            repeat: (default=True) Whether to repeat data while training
+        """
         self.IMAGE_HEIGHT, self.IMAGE_WIDTH, self.CHANNELS = image_size
         self.ROOT_DIR = root_dir
         self.DATA_DIR = "data/raw/"
