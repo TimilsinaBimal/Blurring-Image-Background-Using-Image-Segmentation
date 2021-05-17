@@ -2,5 +2,6 @@ data/*
 .virtual_documents
 .vscode
 __pycache__
-models/
+/models/
 .env
+.ipynb_checkpoints
