@@ -81,8 +81,8 @@ def UNet(out_channels=2, features=[64, 128, 256, 512, 1024]):
                 cropping=crop_amount)(skip_connection)
 
         x = layers.Concatenate()([x, skip_connection])
-        x = CNNBlock(feature*2)(x)
-        x = CNNBlock(feature*2)(x)
+        x = CNNBlock(feature)(x)
+        x = CNNBlock(feature)(x)
 
     x = layers.Conv2D(out_channels, kernel_size=1)(x)
     x = layers.Softmax()(x)
