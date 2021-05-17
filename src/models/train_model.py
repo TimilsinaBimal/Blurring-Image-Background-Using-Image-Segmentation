@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+import pandas as pd
 import tensorflow as tf
 from src.models.models import SegNet, UNet
 from src.data.make_dataset import Dataset
@@ -50,4 +51,6 @@ if __name__ == "__main__":
     print("1: SegNet")
     print("2: UNet")
     model_selection = int(input("Your Choice: "))
-    train(model_selection)
+    history, model = train(model_selection)
+    df = pd.DataFrame(history.history)
+    df.to_csv(os.path.join(ROOT_DIR, "reports/history.csv"), index=False)
