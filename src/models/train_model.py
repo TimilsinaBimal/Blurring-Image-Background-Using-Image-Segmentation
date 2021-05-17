@@ -3,7 +3,6 @@ from pathlib import Path
 import tensorflow as tf
 from src.models.models import SegNet, UNet
 from src.data.make_dataset import Dataset
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 
 def checkpoints() -> list:
@@ -19,11 +18,12 @@ def checkpoints() -> list:
     return [model_checkpoint, early_stopping]
 
 
-def train():
-    # Get Model and Compile it
-    # model = SegNet()
-    model = UNet(1)
-    model.summary()
+def train(model_selection):
+    if model_selection == 1:
+        model = SegNet()
+    elif model_selection == 2:
+        model = UNet()
+
     model.compile(
         optimizer=tf.keras.optimizers.SGD(learning_rate=0.1, momentum=0.9),
         loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
@@ -41,7 +41,13 @@ def train():
     history = model.fit(train_dataset, steps_per_epoch=200, epochs=20, validation_data=(
         validation_dataset), validation_steps=200, callbacks=checkpoints(), verbose=1)
 
+    return history, model
+
 
 if __name__ == "__main__":
     ROOT_DIR = Path(__file__).parent.parent.parent
-    train()
+    print("Enter the model you want to train:")
+    print("1: SegNet")
+    print("2: UNet")
+    model_selection = int(input("Your Choice: "))
+    train(model_selection)
