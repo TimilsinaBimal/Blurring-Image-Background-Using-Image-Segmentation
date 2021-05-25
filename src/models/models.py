@@ -61,30 +61,154 @@ class SegNet(models.Model):
         return models.Model(inputs=[x], outputs=self.call(x))
 
 
-def UNet(out_channels=2, features=[64, 128, 256, 512, 1024]):
-    input = layers.Input(shape=(224, 224, 3))
-    x = VGG_Model(include_last=False)(input)
-    skip_connections = x[:-1]
-    x = x[-1]
-    x = CNNBlock(features[-1]*2)(x)
-    x = CNNBlock(features[-1]*2)(x)
+class UNet(models.Model):
+    def __init__(self, out_channels=2, features=[64, 128, 256, 512]):
+        super(UNet, self).__init__()
+        self.out_channels = out_channels
+        self.features = features
+        self.vgg_model = VGG_Model(include_last=False)
+        self.block1_1 = CNNBlock(self.features[-1]*2)
+        self.block1_2 = CNNBlock(self.features[-1]*2)
+        self.add = layers.Add()
+        self.conv = layers.Conv2D(self.out_channels, kernel_size=1)
+        self.softmax = layers.Softmax()
+        for idx, feature in enumerate(reversed(self.features)):
+            vars(self)[f'cnn_block_{idx}_1'] = CNNBlock(feature)
+            vars(self)[f'cnn_block_{idx}_2'] = CNNBlock(feature)
+            vars(self)[f'upsample_{idx}'] = layers.Conv2DTranspose(
+                feature, kernel_size=2, strides=2, padding="same")
 
-    skip_connections = skip_connections[::-1]
+    def call(self, input_tensor):
+        x = self.vgg_model(input_tensor)
+        skip_connections = x[:-1]
+        x = x[-1]
+        x = self.block1_1(x)
+        x = self.block1_2(x)
 
-    for idx, feature in enumerate(reversed(features)):
-        x = layers.Conv2DTranspose(
-            feature, kernel_size=2, strides=2, padding="same")(x)
-        skip_connection = skip_connections[idx]
-        crop_amount = (skip_connection.shape[1] - x.shape[1]) // 2
-        if x.shape != skip_connection.shape:
-            skip_connection = tf.keras.layers.Cropping2D(
-                cropping=crop_amount)(skip_connection)
+        skip_connections = skip_connections[::-1]
 
-        x = layers.Concatenate()([x, skip_connection])
-        x = CNNBlock(feature)(x)
-        x = CNNBlock(feature)(x)
+        for idx in range(len(self.features)):
+            x = vars(self)[f'upsample_{idx}'](x)
+            skip_connection = skip_connections[idx]
+            crop_amount = (skip_connection.shape[1] - x.shape[1]) // 2
+            if x.shape != skip_connection.shape:
+                skip_connection = tf.keras.layers.Cropping2D(
+                    cropping=crop_amount)(skip_connection)
 
-    x = layers.Conv2D(out_channels, kernel_size=1)(x)
-    x = layers.Softmax()(x)
-    model = models.Model(inputs=input, outputs=x)
-    return model
+            x = self.add([x, skip_connection])
+            x = vars(self)[f'cnn_block_{idx}_1'](x)
+            x = vars(self)[f'cnn_block_{idx}_2'](x)
+
+        x = self.conv(x)
+        x = self.softmax(x)
+        return x
+
+    def model(self):
+        x = layers.Input(shape=(224, 224, 3))
+        return models.Model(inputs=[x], outputs=self.call(x))
+
+
+class PSPNet(models.Model):
+    def __init__(self, out_channels=2, kernel_size=[1, 2, 3, 4], features=[512, 128]):
+        super(PSPNet, self).__init__()
+        self.out_channels = out_channels
+        self.kernel_size = kernel_size
+        self.conv1 = layers.Conv2D(128, kernel_size=3, padding='same')
+        self.conv2 = layers.Conv2D(128, kernel_size=3, padding='same')
+        self.pooling = layers.MaxPooling2D(pool_size=2, padding='same')
+        for idx in range(1, 5):
+            vars(self)[f'conv3_{idx}'] = layers.Conv2D(
+                features[0], kernel_size=self.kernel_size[idx-1], padding='same')
+            vars(self)[f'conv4_{idx}'] = layers.Conv2D(
+                features[1], kernel_size=self.kernel_size[idx-1], padding='same')
+        self.upsample = layers.Conv2DTranspose(
+            256, kernel_size=2, padding='same')
+        self.final_conv = layers.Conv2D(
+            self.out_channels, kernel_size=3, padding='same')
+        self.softmax = layers.Softmax()
+
+    def call(self, input_tensor):
+        x = self.conv1(input_tensor)
+        x = self.conv2(x)
+        int_layers = [x]
+        for idx in range(1, 5):
+            op = vars(self)[f'conv3_{idx}'](x)
+            op = vars(self)[f"conv4_{idx}"](op)
+            int_layers.append(self.upsample(op))
+        x = layers.Concatenate()(int_layers)
+        x = self.final_conv(x)
+        x = self.softmax(x)
+        return x
+
+    def model(self):
+        x = layers.Input(shape=(224, 224, 3))
+        return models.Model(inputs=[x], outputs=self.call(x))
+
+
+class DeepLab(models.Model):
+    def __init__(self, out_channels=2):
+        super(DeepLab, self).__init__()
+        self.out_channels = out_channels
+        self.conv_1 = CNNBlock(64)
+        self.conv_2 = CNNBlock(128)
+        self.conv_3= CNNBlock(128)
+        self.one_1_conv = layers.Conv2D(128, kernel_size=1, padding="same")
+        self.pool = layers.MaxPooling2D(padding="same")
+        self.conv_3_1 = layers.Conv2D(512, kernel_size=1, padding="same")
+        self.conv_3_2 = layers.Conv2D(512, kernel_size=(
+            3, 3), strides=4, padding="same")
+        self.conv_3_3 = layers.Conv2D(512, kernel_size=(
+            3, 3), strides=8, padding="same")
+        self.conv_3_4 = layers.Conv2D(512, kernel_size=(
+            3, 3), strides=12, padding="same")
+        self.concat = layers.Concatenate()
+        self.conv_up_4 = layers.Conv2DTranspose(
+            128, kernel_size=2, strides=4)
+        self.conv_up_2 = layers.Conv2DTranspose(
+            128, kernel_size=2, strides=2)
+        self.conv_up_22 = layers.Conv2DTranspose(
+            128, kernel_size=2, strides=2)
+        self.final_layer = layers.Conv2D(
+            self.out_channels, kernel_size=1, padding='same')
+        self.softmax = layers.Softmax()
+
+    def call(self, input_tensor):
+        x = self.conv_1(input_tensor)
+        x = self.pool(x)
+        add = tf.identity(x)
+        x = self.conv_2(x)
+
+        # Intermediat Layers
+        concat_layers = []
+        layer_1 = self.conv_3_1(x)
+        concat_layers.append(layer_1)
+
+        layer_2 = self.conv_3_2(x)
+        layer_2 = self.pool(layer_2)
+        concat_layers.append(layer_2)
+
+        layer_3 = self.conv_3_3(x)
+        concat_layers.append(layer_3)
+
+        layer_4 = self.conv_3_4(x)
+        layer_4 = layers.ZeroPadding2D(padding=2)(layer_4)
+        concat_layers.append(layer_4)
+
+        x = self.concat(concat_layers[1:])
+        # UPScale by 4
+        x = self.conv_up_4(x)
+        x = self.conv_3(x)
+        # upsample by 2
+        x = self.conv_up_2(x)
+        # 1x1 conv
+        add = self.one_1_conv(add)
+        x = self.concat([add, x, concat_layers[0]])
+        x = self.conv_up_22(x)
+        x = self.conv_3(x)
+        x = self.final_layer(x)
+        x = self.softmax(x)
+        return x
+
+    def model(self):
+        x = layers.Input(shape=(224, 224, 3))
+        return models.Model(inputs=x, outputs=self.call(x))
