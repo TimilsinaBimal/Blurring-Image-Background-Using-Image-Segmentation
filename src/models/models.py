@@ -111,6 +111,7 @@ class UNet(models.Model):
 class PSPNet(models.Model):
     def __init__(self, out_channels=2, kernel_size=[1, 2, 3, 4], features=[256, 64]):
         super(PSPNet, self).__init__()
+        self.vgg = VGG_Model(include_last=False)
         self.out_channels = out_channels
         self.kernel_size = kernel_size
         self.conv1 = layers.Conv2D(128, kernel_size=3, padding='same')
@@ -128,8 +129,10 @@ class PSPNet(models.Model):
         self.softmax = layers.Softmax()
 
     def call(self, input_tensor):
-        x = self.conv1(input_tensor)
-        x = self.conv2(x)
+        x = self.vgg(input_tensor)
+        # x = self.conv1(x)
+        # x = self.conv2(x)
+        x = x[-1]
         int_layers = [x]
         for idx in range(1, 5):
             op = vars(self)[f'conv3_{idx}'](x)
@@ -151,7 +154,7 @@ class DeepLab(models.Model):
         self.out_channels = out_channels
         self.conv_1 = CNNBlock(64)
         self.conv_2 = CNNBlock(128)
-        self.conv_3= CNNBlock(128)
+        self.conv_3 = CNNBlock(128)
         self.one_1_conv = layers.Conv2D(128, kernel_size=1, padding="same")
         self.pool = layers.MaxPooling2D(padding="same")
         self.conv_3_1 = layers.Conv2D(512, kernel_size=1, padding="same")
