@@ -109,7 +109,7 @@ class UNet(models.Model):
 
 
 class PSPNet(models.Model):
-    def __init__(self, out_channels=2, kernel_size=[1, 2, 3, 4], features=[256, 64]):
+    def __init__(self, out_channels=2, kernel_size=[1, 2, 3, 4], features=[512, 256]):
         super(PSPNet, self).__init__()
         self.vgg = VGG_Model(include_last=False)
         self.out_channels = out_channels

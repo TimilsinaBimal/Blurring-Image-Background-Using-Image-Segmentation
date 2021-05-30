@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 import tensorflow as tf
 from src.data.make_dataset import Dataset
-from src.visualization.display_image import display
+from src.visualization.image import display
 from src.models.models import UNet, SegNet
 
 
