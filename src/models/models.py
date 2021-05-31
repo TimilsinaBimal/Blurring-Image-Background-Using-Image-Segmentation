@@ -69,10 +69,10 @@ class UNet(models.Model):
         self.vgg_model = VGG_Model(include_last=False)
         self.block1_1 = CNNBlock(self.features[-1]*2)
         self.block1_2 = CNNBlock(self.features[-1]*2)
-        self.add = layers.Add()
         self.conv = layers.Conv2D(self.out_channels, kernel_size=1)
         self.softmax = layers.Softmax()
         for idx, feature in enumerate(reversed(self.features)):
+            vars(self)[f"concat_{idx}"] = layers.Concatenate()
             vars(self)[f'cnn_block_{idx}_1'] = CNNBlock(feature)
             vars(self)[f'cnn_block_{idx}_2'] = CNNBlock(feature)
             vars(self)[f'upsample_{idx}'] = layers.Conv2DTranspose(
@@ -95,7 +95,7 @@ class UNet(models.Model):
                 skip_connection = tf.keras.layers.Cropping2D(
                     cropping=crop_amount)(skip_connection)
 
-            x = self.add([x, skip_connection])
+            x = vars(self)[f"concat_{idx}"]([x, skip_connection])
             x = vars(self)[f'cnn_block_{idx}_1'](x)
             x = vars(self)[f'cnn_block_{idx}_2'](x)
 
@@ -109,13 +109,12 @@ class UNet(models.Model):
 
 
 class PSPNet(models.Model):
-    def __init__(self, out_channels=2, kernel_size=[1, 2, 3, 4], features=[512, 256]):
+    def __init__(self, out_channels=2, kernel_size=[1, 2, 3, 4], features=[1024, 512]):
         super(PSPNet, self).__init__()
         self.vgg = VGG_Model(include_last=False)
         self.out_channels = out_channels
         self.kernel_size = kernel_size
-        self.conv1 = layers.Conv2D(128, kernel_size=3, padding='same')
-        self.conv2 = layers.Conv2D(128, kernel_size=3, padding='same')
+        self.conv1 = layers.Conv2D(256, kernel_size=3, padding='same')
         self.pooling = layers.MaxPooling2D(pool_size=2, padding='same')
         for idx in range(1, 5):
             vars(self)[f'conv3_{idx}'] = layers.Conv2D(
@@ -124,14 +123,16 @@ class PSPNet(models.Model):
                 features[1], kernel_size=self.kernel_size[idx-1], padding='same')
         self.upsample = layers.Conv2DTranspose(
             256, kernel_size=2, padding='same')
+        self.upsample_2 = layers.Conv2DTranspose(
+            256, kernel_size=2, strides=4, padding='same')
+        self.upsample_3 = layers.Conv2DTranspose(
+            256, kernel_size=2, strides=4, padding='same')
         self.final_conv = layers.Conv2D(
             self.out_channels, kernel_size=3, padding='same')
         self.softmax = layers.Softmax()
 
     def call(self, input_tensor):
         x = self.vgg(input_tensor)
-        # x = self.conv1(x)
-        # x = self.conv2(x)
         x = x[-1]
         int_layers = [x]
         for idx in range(1, 5):
@@ -139,6 +140,9 @@ class PSPNet(models.Model):
             op = vars(self)[f"conv4_{idx}"](op)
             int_layers.append(self.upsample(op))
         x = layers.Concatenate()(int_layers)
+        x = self.upsample_2(x)
+        x = self.conv1(x)
+        x = self.upsample_3(x)
         x = self.final_conv(x)
         x = self.softmax(x)
         return x
