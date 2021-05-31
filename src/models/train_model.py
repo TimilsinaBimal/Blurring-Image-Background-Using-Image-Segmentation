@@ -6,10 +6,11 @@ from src.models.models import DeepLab, PSPNet, SegNet, UNet
 from src.data.make_dataset import Dataset
 
 
-def callbacks() -> list:
+def custom_callbacks(model) -> list:
+    model_name = model.__class__.__name__
     model_checkpoint = tf.keras.callbacks.ModelCheckpoint(
-        filepath=os.path.join(ROOT_DIR, "models/unet/"), monitor='val_accuracy', verbose=1, save_best_only=True,
-        save_weights_only=True, mode='max', save_freq='epoch'
+        filepath=os.path.join(ROOT_DIR, f"models/{model_name}/"), monitor='val_accuracy', verbose=1, save_best_only=True,
+        save_weights_only=False, mode='max', save_freq='epoch'
     )
 
     early_stopping = tf.keras.callbacks.EarlyStopping(
@@ -67,11 +68,14 @@ def train(model):
     train_dataset, validation_dataset, test_dataset = dataset.make()
 
     # Train the Model
+    TRAIN_DATA_LEN = dataset.TRAIN_DATA_LEN
+    EPOCHS = 20
+    VALIDATION_LEN = dataset.VAL_DATA_LEN
+    callbacks = custom_callbacks(model)
+    history = model.fit(train_dataset, steps_per_epoch=TRAIN_DATA_LEN, epochs=EPOCHS,  validation_data=(
+        validation_dataset), validation_steps=VALIDATION_LEN, callbacks=callbacks, verbose=1)
 
-    history = model.fit(train_dataset, steps_per_epoch=200, epochs=20,  validation_data=(
-        validation_dataset), validation_steps=200, callbacks=callbacks(), verbose=1)
-
-    return history, model
+    return history
 
 
 if __name__ == "__main__":
@@ -84,17 +88,13 @@ if __name__ == "__main__":
     model_selection = int(input("Your Choice: "))
     if model_selection == 1:
         model = train_segnet()
-        df_file = "reports/segnet/history.csv"
     elif model_selection == 2:
         model = train_unet()
-        df_file = "reports/unet/history.csv"
     elif model_selection == 3:
         model = train_pspnet()
-        df_file = "reports/pspnet/history.csv"
     elif model_selection == 4:
         model = train_deeplab()
-        df_file = "reports/deeplab/history.csv"
-
-    history, model = train(model_selection)
+    df_file = model.__class__.__name__
+    history = train(model)
     df = pd.DataFrame(history.history)
-    df.to_csv(os.path.join(ROOT_DIR, "reports/history.csv"), index=False)
+    df.to_csv(os.path.join(ROOT_DIR, f"{df_file}_history.csv"), index=False)
