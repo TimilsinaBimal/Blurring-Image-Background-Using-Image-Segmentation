@@ -24,6 +24,9 @@ class Dataset:
             self.ROOT_DIR, self.DATA_DIR, "images/")
         self.BASE_MASK_DIR = os.path.join(
             self.ROOT_DIR, self.DATA_DIR, "masks")
+        self.TRAIN_DATA_LEN = 0
+        self.TEST_DATA_LEN = 0
+        self.VAL_DATA_LEN = 0
 
     def get_file(self, _path):
         for (_, _, files) in os.walk(_path):
@@ -32,10 +35,15 @@ class Dataset:
     def split_data(self, test_size=0.25, val_size=0.15):
         train_images, test_images, train_masks, test_masks = train_test_split(
             self.get_file(self.BASE_IMAGE_DIR), self.get_file(self.BASE_MASK_DIR), test_size=val_size, random_state=42)
+        self.TRAIN_DATA_LEN = len(train_images)
+        self.TEST_DATA_LEN = len(test_images)
 
         if self.validation:
             train_images, val_images, train_masks, val_masks = train_test_split(
                 train_images, train_masks, test_size=test_size, random_state=42)
+            self.TRAIN_DATA_LEN = len(train_images)
+            self.TEST_DATA_LEN = len(test_images)
+            self.VAL_DATA_LEN = len(val_images)
 
             return train_images, val_images, test_images, train_masks, val_masks, test_masks
 
