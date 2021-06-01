@@ -233,3 +233,78 @@ class DeepLab(models.Model):
     def model(self):
         x = layers.Input(shape=(224, 224, 3))
         return models.Model(inputs=x, outputs=self.call(x))
+
+
+class ImageSegmentation(models.Model):
+    def __init__(self, out_channels=2):
+        super(ImageSegmentation, self).__init__()
+        self.out_channels = out_channels
+        self.vgg = VGG_Model(include_last=True)
+        kernel_size = [1, 3, 3, 3, 3]
+        strides = [1, 6, 12, 18]
+        filters = [512, 256, 128, 64]
+
+        for idx in range(1, 5):
+            vars(self)[f'att_concat_{idx}'] = layers.Concatenate()
+            if idx == 3:
+                vars(self)[f'att_upsample_{idx}'] = layers.Conv2DTranspose(
+                    512, kernel_size=4, strides=1, padding='valid')
+            else:
+                vars(self)[f'att_upsample_{idx}'] = layers.Conv2DTranspose(
+                    512, kernel_size=2, strides=2, padding='same')
+
+        for idx in range(1, 5):
+            vars(self)[f'conv_0_{idx}'] = layers.Conv2D(
+                1024, kernel_size=kernel_size[idx-1], strides=strides[idx-1], padding='same')
+            vars(self)[f'concat_{idx}'] = layers.Concatenate()
+            vars(self)[f'upsample_{idx}'] = layers.Conv2DTranspose(
+                filters[idx-1], kernel_size=2, strides=2, padding='same')
+            vars(self)[f'conv_1_{idx}'] = CNNBlock(filters[idx-1])
+            vars(self)[f'conv_2_{idx}'] = CNNBlock(filters[idx-1])
+
+        self.pool_1 = layers.MaxPooling2D(padding='same')
+        self.conv11 = layers.Conv2D(512, kernel_size=1, padding='same')
+        self.up_by_3 = layers.Conv2DTranspose(
+            512, kernel_size=4, strides=1, padding='valid')
+
+        self.final_layer = layers.Conv2D(
+            self.out_channels, kernel_size=1, padding='same')
+        self.softmax = layers.Softmax()
+
+    def call(self, input_tensor):
+        x = self.vgg(input_tensor)
+        identity_layers = x[:-1]
+        x = x[-1]
+
+        # Attrous Block
+        attrs_layers = []
+        for idx in range(1, 5):
+            attrs_layers.append(vars(self)[f'conv_0_{idx}'](x))
+        pool_layer = self.pool_1(x)
+        conv1 = self.conv11(x)
+
+        all_layers = [attrs_layers[-2:], [attrs_layers[1]],
+                      [pool_layer], [attrs_layers[0], conv1]]
+        for idx in range(1, 5):
+            try:
+                _concat = vars(self)[f"att_concat_{idx}"](
+                    all_layers[idx-1].append(_upsample))
+            except:
+                _concat = vars(self)[f"att_concat_{idx}"](all_layers[idx-1])
+            _upsample = vars(self)[f"att_upsample_{idx}"](_concat)
+
+        identity_layers = identity_layers[::-1]
+        x = _upsample
+        for idx in range(1, 5):
+            x = vars(self)[f'concat_{idx}']([x, identity_layers[idx-1]])
+            x = vars(self)[f'conv_1_{idx}'](x)
+            x = vars(self)[f'conv_2_{idx}'](x)
+            x = vars(self)[f"upsample_{idx}"](x)
+
+        x = self.final_layer(x)
+        x = self.softmax(x)
+        return x
+
+    def model(self):
+        inputs = layers.Input(shape=(224, 224, 3))
+        return models.Model(inputs=inputs, outputs=self.call(inputs))
