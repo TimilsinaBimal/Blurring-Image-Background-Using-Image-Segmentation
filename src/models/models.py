@@ -1,7 +1,7 @@
 import tensorflow as tf
 from src.utils.layers import CNNBlock, BlockLayer
 from tensorflow.keras import models, layers
-from tensorflow.keras.applications import VGG16
+from tensorflow.keras.applications import VGG16, ResNet50
 
 
 def VGG_Model(include_last=True):
@@ -31,6 +31,18 @@ def VGG_Model(include_last=True):
 
     model = models.Model(inputs=vgg.input, outputs=output)
     model.trainable = False
+    return model
+
+
+def ResNet():
+    resnet = ResNet50(
+        include_top=False,
+        weights='imagenet',
+        input_shape=(224, 224, 3)
+    )
+    outputs = resnet.get_layer("conv2_block3_out").output
+    model = models.Model(inputs=resnet.inputs, outputs=outputs)
+
     return model
 
 
@@ -156,61 +168,63 @@ class DeepLab(models.Model):
     def __init__(self, out_channels=2):
         super(DeepLab, self).__init__()
         self.out_channels = out_channels
-        self.conv_1 = CNNBlock(64)
-        self.conv_2 = CNNBlock(128)
-        self.conv_3 = CNNBlock(128)
+        self.resnet = ResNet()
         self.one_1_conv = layers.Conv2D(128, kernel_size=1, padding="same")
-        self.pool = layers.MaxPooling2D(padding="same")
-        self.conv_3_1 = layers.Conv2D(512, kernel_size=1, padding="same")
-        self.conv_3_2 = layers.Conv2D(512, kernel_size=(
-            3, 3), strides=4, padding="same")
-        self.conv_3_3 = layers.Conv2D(512, kernel_size=(
-            3, 3), strides=8, padding="same")
-        self.conv_3_4 = layers.Conv2D(512, kernel_size=(
-            3, 3), strides=12, padding="same")
-        self.concat = layers.Concatenate()
+
+        strides = [1, 4, 8, 12]
+        kernels = [1, 3, 3, 3]
+        for idx in range(1, 5):
+            vars(self)[f'conv_3_{idx}'] = layers.Conv2D(
+                512, kernel_size=kernels[idx-1], strides=strides[idx-1], padding="same")
+
         self.conv_up_4 = layers.Conv2DTranspose(
             128, kernel_size=2, strides=4)
-        self.conv_up_2 = layers.Conv2DTranspose(
-            128, kernel_size=2, strides=2)
-        self.conv_up_22 = layers.Conv2DTranspose(
-            128, kernel_size=2, strides=2)
+        for idx in range(1, 4):
+            vars(self)[f'conv_{idx}'] = CNNBlock(128)
+            vars(self)[f'conv_up_{idx}'] = layers.Conv2DTranspose(
+                128, kernel_size=2, strides=2)
+
+        for idx in range(1, 3):
+            vars(self)[f'concat_{idx}'] = layers.Concatenate()
+            vars(self)[f'pool_{idx}'] = layers.MaxPooling2D(padding="same")
+
         self.final_layer = layers.Conv2D(
             self.out_channels, kernel_size=1, padding='same')
         self.softmax = layers.Softmax()
 
     def call(self, input_tensor):
-        x = self.conv_1(input_tensor)
-        x = self.pool(x)
+        x = self.resnet(input_tensor)
         add = tf.identity(x)
-        x = self.conv_2(x)
 
-        # Intermediat Layers
+        # Intermediate Layers
         concat_layers = []
         layer_1 = self.conv_3_1(x)
         concat_layers.append(layer_1)
 
         layer_2 = self.conv_3_2(x)
-        layer_2 = self.pool(layer_2)
+        layer_2 = self.pool_2(layer_2)
         concat_layers.append(layer_2)
 
         layer_3 = self.conv_3_3(x)
         concat_layers.append(layer_3)
 
         layer_4 = self.conv_3_4(x)
-        layer_4 = layers.ZeroPadding2D(padding=2)(layer_4)
+        layer_4 = layers.ZeroPadding2D(padding=1)(layer_4)
         concat_layers.append(layer_4)
 
-        x = self.concat(concat_layers[1:])
+        x = self.concat_1(concat_layers[1:])
         # UPScale by 4
         x = self.conv_up_4(x)
-        x = self.conv_3(x)
+        x = self.conv_1(x)
         # upsample by 2
-        x = self.conv_up_2(x)
+        x = self.conv_up_1(x)
         # 1x1 conv
         add = self.one_1_conv(add)
-        x = self.concat([add, x, concat_layers[0]])
-        x = self.conv_up_22(x)
+        x = self.concat_2([add, x, concat_layers[0]])
+        x = self.conv_up_2(x)
+        x = self.conv_2(x)
+
+        x = self.conv_up_3(x)
         x = self.conv_3(x)
         x = self.final_layer(x)
         x = self.softmax(x)
