@@ -1,7 +1,7 @@
 import os
 import pandas as pd
 from pathlib import Path
-from data.make_dataset import Dataset
+from data.prepare import Dataset
 from models.models import SegNet, PSPNet, UNet, DeepLab, ImageSegmentation
 from models.predict import show_predictions, create_mask, predict
 from models.train import (
