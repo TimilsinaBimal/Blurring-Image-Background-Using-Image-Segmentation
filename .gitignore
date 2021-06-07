@@ -5,3 +5,4 @@ __pycache__
 /models/
 .env
 .ipynb_checkpoints
+node_modules
