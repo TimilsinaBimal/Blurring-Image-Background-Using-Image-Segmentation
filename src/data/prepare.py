@@ -1,19 +1,21 @@
 import os
 import tensorflow as tf
 from sklearn.model_selection import train_test_split
+from data.augmentation import DataAugmentation
 
 
 class Dataset:
-    def __init__(self, root_dir, batch_size, image_size=(224, 224, 3), BUFFER_SIZE=100, validation=False):
-        """
-            Preprocess the dataset from raw dataset to train model.
-            ARGUMENTS
-            ---
-            base_dir: Base data directory path
-            batch_size: Batch size to generate
-            image_size: [default (224,224,3)] Size of image
-            repeat: (default=True) Whether to repeat data while training
-        """
+    """
+        Preprocess the dataset from raw dataset to train model.
+        ARGUMENTS
+        ---
+        base_dir: Base data directory path
+        batch_size: Batch size to generate
+        image_size: [default (224,224,3)] Size of image
+        repeat: (default=True) Whether to repeat data while training
+    """
+
+    def __init__(self, root_dir, batch_size, image_size=(224, 224, 3), BUFFER_SIZE=1024, validation=False):
         self.IMAGE_HEIGHT, self.IMAGE_WIDTH, self.CHANNELS = image_size
         self.ROOT_DIR = root_dir
         self.DATA_DIR = "data/raw/"
@@ -32,7 +34,7 @@ class Dataset:
         for (_, _, files) in os.walk(_path):
             return files
 
-    def split_data(self, test_size=0.25, val_size=0.15):
+    def split_data(self, test_size=0.15, val_size=0.15):
         train_images, test_images, train_masks, test_masks = train_test_split(
             self.get_file(self.BASE_IMAGE_DIR), self.get_file(self.BASE_MASK_DIR), test_size=val_size, random_state=42)
         self.TRAIN_DATA_LEN = len(train_images)
@@ -49,6 +51,13 @@ class Dataset:
 
         return train_images, test_images, train_masks, test_masks
 
+    def augment(self, image, mask):
+        augment = DataAugmentation(
+            rotation_range=4, vertical_shift=4,
+            horizontal_shift=4, zoom_range=(0.2, 0.2), shear_intensity=2, subset_size=0.20)
+        image, mask = augment.apply(image, mask)
+        return image, mask
+
     def prepare_image(self, file_path, masks=False):
         img = tf.io.read_file(file_path)
         if masks:
@@ -64,20 +73,23 @@ class Dataset:
             image_path = os.path.join(
                 self.BASE_IMAGE_DIR, images[idx].decode())
             img = self.prepare_image(image_path)
-
             mask_path = os.path.join(self.BASE_MASK_DIR, masks[idx].decode())
             mask = self.prepare_image(mask_path, masks=True)
+            if idx >= self.TRAIN_DATA_LEN:
+                img, mask = self.augment(img, mask)
             yield img, mask
 
     def make_dataset(self, images, masks, training=True):
+        if training:
+            images = images[::] + images[:len(images)-100]
+            self.TRAIN_DATA_LEN = len(images)
         dataset = tf.data.Dataset.from_generator(
             self.prepare_dataset,
             args=[images, masks],
-            output_signature=(
-                tf.TensorSpec(
-                    shape=(self.IMAGE_HEIGHT, self.IMAGE_WIDTH, self.CHANNELS), dtype=tf.float32),
-                tf.TensorSpec(shape=(self.IMAGE_HEIGHT,
-                              self.IMAGE_WIDTH, 1), dtype=tf.float32)
+            output_types=(tf.float32, tf.float32),
+            output_shapes=(
+                (self.IMAGE_HEIGHT, self.IMAGE_WIDTH, self.CHANNELS),
+                (self.IMAGE_HEIGHT, self.IMAGE_WIDTH, 1)
             )
         )
         if training:
