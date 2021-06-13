@@ -12,6 +12,7 @@ from models.train import (
     train,
     train_segmentation
 )
+from visualization.image import display
 
 
 def train_model():
@@ -79,12 +80,29 @@ def predict_model():
             show_predictions(model, image[0][0], image[1][0])
 
 
+def test():
+    ROOT_DIR = Path(__file__).parent.parent
+    dataset = Dataset(root_dir=ROOT_DIR,
+                      batch_size=1, validation=True)
+
+    _, _, test_dataset = dataset.make()
+
+    for image in test_dataset.take(10):
+        display([image[0][0], image[1][0]])
+
+
 if __name__ == "__main__":
     print("Select one Option:")
     print("1. Train Model")
     print("2. Predict Model")
+    print("3. Test")
     choice = int(input("Choice: "))
     if choice == 1:
         train_model()
+
     if choice == 2:
         predict_model()
+
+    # FOR TESTING PURPOSES ONLY
+    if choice == 3:
+        test()
