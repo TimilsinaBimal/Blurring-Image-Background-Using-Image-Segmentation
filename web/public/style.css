@@ -1,0 +1,43 @@
+input[type="submit"] {
+  border: 0;
+  background: none;
+  display: block;
+  margin: 20px auto;
+  text-align: center;
+  border: 2px solid #2ecc71;
+  padding: 7px 30px;
+  outline: none;
+  color: black;
+  font-size: 16px;
+  border-radius: 20px;
+  transition: 0.3s;
+  cursor: pointer;
+}
+input[type="submit"]:hover {
+  background: #2ecc71;
+}
+input[type="file"] {
+  margin-left: 45%;
+  margin-top: 1%;
+  font-size: 16px;
+  font-weight: bold;
+}
+input[type="text"] {
+  border: 0;
+  background: none;
+  display: block;
+  margin: 10px auto;
+  border: 1px solid;
+  border-radius: 12px;
+  text-align: center;
+  padding: 5px 5px;
+  width: 40%;
+  outline: none;
+  font-size: 18px;
+  color: black;
+  transition: 0.3s;
+}
+/* input[type="text"]:focus {
+  width: 350px;
+  border-color: #2ecc71;
+} */

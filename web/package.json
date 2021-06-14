@@ -1,0 +1,33 @@
+{
+  "name": "blurring-image-background-using-image-segmentation",
+  "version": "1.0.0",
+  "description": "Simple image loader for ML model",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TimilsinaBimal/Blurring-Image-Background-Using-Image-Segmentation.git"
+  },
+  "keywords": [
+    "Machine Learning",
+    "Image Segmentation"
+  ],
+  "author": "CE guys",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/TimilsinaBimal/Blurring-Image-Background-Using-Image-Segmentation/issues"
+  },
+  "homepage": "https://github.com/TimilsinaBimal/Blurring-Image-Background-Using-Image-Segmentation#readme",
+  "dependencies": {
+    "ejs": "^3.1.6",
+    "express": "^4.17.1",
+    "morgan": "^1.10.0",
+    "multer": "^1.4.2"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.7"
+  }
+}
