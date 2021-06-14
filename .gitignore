@@ -1,7 +1,17 @@
+# Datasets
 data/*
+
+#Jupyter Notebook checkpoints
 .virtual_documents
+.ipynb_checkpoints
+
+# Vs code settings
 .vscode
+
+#Python caches
 __pycache__
+
+#Saved Model weights
 /models/
 .env
 .ipynb_checkpoints
