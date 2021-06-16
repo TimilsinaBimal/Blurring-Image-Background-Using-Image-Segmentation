@@ -104,13 +104,7 @@ class UNet(models.Model):
 
         for idx in range(len(self.features)):
             x = vars(self)[f'upsample_{idx}'](x)
-            skip_connection = skip_connections[idx]
-            crop_amount = (skip_connection.shape[1] - x.shape[1]) // 2
-            if x.shape != skip_connection.shape:
-                skip_connection = tf.keras.layers.Cropping2D(
-                    cropping=crop_amount)(skip_connection)
-
-            x = vars(self)[f"concat_{idx}"]([x, skip_connection])
+            x = vars(self)[f"concat_{idx}"]([x, skip_connections[idx]])
             x = vars(self)[f'cnn_block_{idx}_1'](x)
             x = vars(self)[f'cnn_block_{idx}_2'](x)
 
@@ -145,6 +139,7 @@ class PSPNet(models.Model):
         self.final_conv = layers.Conv2D(
             self.out_channels, kernel_size=3, padding='same')
         self.softmax = layers.Softmax()
+        self.concat = layers.Concatenate()
 
     def call(self, input_tensor):
         x = self.vgg(input_tensor)
@@ -154,7 +149,7 @@ class PSPNet(models.Model):
             op = vars(self)[f'conv3_{idx}'](x)
             op = vars(self)[f"conv4_{idx}"](op)
             int_layers.append(self.upsample(op))
-        x = layers.Concatenate()(int_layers)
+        x = self.concat(int_layers)
         x = self.upsample_2(x)
         x = self.conv1(x)
         x = self.upsample_3(x)
@@ -194,6 +189,7 @@ class DeepLab(models.Model):
         self.final_layer = layers.Conv2D(
             self.out_channels, kernel_size=1, padding='same')
         self.softmax = layers.Softmax()
+        self.zero_padding = layers.ZeroPadding2D(padding=1)
 
     def call(self, input_tensor):
         x = self.resnet(input_tensor)
@@ -212,7 +208,7 @@ class DeepLab(models.Model):
         concat_layers.append(layer_3)
 
         layer_4 = self.conv_3_4(x)
-        layer_4 = layers.ZeroPadding2D(padding=1)(layer_4)
+        layer_4 = self.zero_padding(layer_4)
         concat_layers.append(layer_4)
 
         x = self.concat_1(concat_layers[1:])
