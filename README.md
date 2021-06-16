@@ -5,7 +5,7 @@ This repo contains the code to blur any image background using image segmentatio
 ### Algorithms
 | Algorithm | Training Accuracy | Validation Accuracy | Test Accuracy |
 | :-------- |  :----------------| :------------------ | :------------ |
-| SegNet    | 90+               | 87+                 | 90+           |
+| SegNet    | 98.36              | 94.16               | 97.15           |
 | UNet      | NA                | NA                  | NA            |
 | PSPNet    | NA                | NA                  | NA            |
 | DeepLab   | NA                | NA                  | NA            |
