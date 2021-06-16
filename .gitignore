@@ -13,6 +13,6 @@ __pycache__
 
 #Saved Model weights
 /models/
-
-#Virtual environments
 .env
+.ipynb_checkpoints
+node_modules
