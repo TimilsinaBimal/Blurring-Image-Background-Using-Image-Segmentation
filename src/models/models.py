@@ -1,10 +1,10 @@
 import tensorflow as tf
-from utils import CNNBlock, BlockLayer
-from tensorflow.keras import models, layers
+from tensorflow.keras import layers, models
 from tensorflow.keras.applications import VGG16, ResNet50
-
+from utils import BlockLayer, CNNBlock
 
 # TODO Make models compatible with keras tuner for hyperparameter tuning for models such as Segnet,PSPNet and ImageSegmentation
+
 
 def VGG_Model(include_last=True):
     vgg = VGG16(
