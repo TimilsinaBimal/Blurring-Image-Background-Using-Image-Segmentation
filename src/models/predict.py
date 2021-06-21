@@ -13,5 +13,5 @@ def show_predictions(model, image, mask):
     display([image, mask, create_mask(prediction)])
 
 
-def predict(model, dataset):
-    return model.evaluate(dataset, steps=200)
+def predict(model, dataset, steps):
+    return model.evaluate(dataset, steps=steps)
