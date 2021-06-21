@@ -16,3 +16,6 @@ __pycache__
 .env
 .ipynb_checkpoints
 node_modules
+
+# Images for testing
+test
