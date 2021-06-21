@@ -15,7 +15,7 @@ class Dataset:
         repeat: (default=True) Whether to repeat data while training
     """
 
-    def __init__(self, root_dir, batch_size, image_size=(224, 224, 3), BUFFER_SIZE=1024, validation=False):
+    def __init__(self, root_dir, batch_size, image_size=(224, 224, 3), BUFFER_SIZE=50, validation=False):
         self.IMAGE_HEIGHT, self.IMAGE_WIDTH, self.CHANNELS = image_size
         self.ROOT_DIR = root_dir
         self.DATA_DIR = "data/raw/"
@@ -29,6 +29,7 @@ class Dataset:
         self.TRAIN_DATA_LEN = 0
         self.TEST_DATA_LEN = 0
         self.VAL_DATA_LEN = 0
+        self.test = []
 
     def get_file(self, _path):
         for (_, _, files) in os.walk(_path):
@@ -39,10 +40,13 @@ class Dataset:
             self.get_file(self.BASE_IMAGE_DIR), self.get_file(self.BASE_MASK_DIR), test_size=val_size, random_state=42)
         self.TRAIN_DATA_LEN = len(train_images)
         self.TEST_DATA_LEN = len(test_images)
+        self.test += test_images
 
         if self.validation:
             train_images, val_images, train_masks, val_masks = train_test_split(
                 train_images, train_masks, test_size=test_size, random_state=42)
+            # train_images, val_images, train_masks, val_masks = train_images[
+            #     :50], val_images[:10], train_masks[:50], val_masks[:10]
             self.TRAIN_DATA_LEN = len(train_images)
             self.TEST_DATA_LEN = len(test_images)
             self.VAL_DATA_LEN = len(val_images)
@@ -81,7 +85,8 @@ class Dataset:
 
     def make_dataset(self, images, masks, training=True):
         if training:
-            images = images[::] + images[:len(images)-100]
+            images = images[::] + images[:len(images)]
+            masks = masks[::] + masks[:len(masks)]
             self.TRAIN_DATA_LEN = len(images)
         dataset = tf.data.Dataset.from_generator(
             self.prepare_dataset,
