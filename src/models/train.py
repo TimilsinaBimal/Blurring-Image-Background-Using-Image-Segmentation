@@ -76,12 +76,15 @@ def train(model, ROOT_DIR):
     train_dataset, validation_dataset, test_dataset = dataset.make()
 
     # Train the Model
-    # TODO Find a way to calculate the size of training set after data augmentation
+    BATCH_SIZE = dataset.BATCH_SIZE
     TRAIN_DATA_LEN = dataset.TRAIN_DATA_LEN
     EPOCHS = 20
     VALIDATION_LEN = dataset.VAL_DATA_LEN
+    steps_per_epoch = TRAIN_DATA_LEN // BATCH_SIZE
+    validation_steps = VALIDATION_LEN // BATCH_SIZE
+
     callbacks = custom_callbacks(model, ROOT_DIR)
-    history = model.fit(train_dataset, steps_per_epoch=4000, epochs=EPOCHS,  validation_data=(
-        validation_dataset), validation_steps=VALIDATION_LEN, callbacks=callbacks, verbose=1)
+    history = model.fit(train_dataset, steps_per_epoch=steps_per_epoch, epochs=EPOCHS,  validation_data=(
+        validation_dataset), validation_steps=validation_steps, callbacks=callbacks, verbose=1)
 
     return history
