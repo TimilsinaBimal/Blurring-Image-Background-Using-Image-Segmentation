@@ -22,10 +22,14 @@
   },
   "homepage": "https://github.com/TimilsinaBimal/Blurring-Image-Background-Using-Image-Segmentation#readme",
   "dependencies": {
+    "body-parser": "^1.19.0",
     "ejs": "^3.1.6",
     "express": "^4.17.1",
+    "gridfs-stream": "^1.1.1",
+    "mongoose": "^5.12.14",
     "morgan": "^1.10.0",
-    "multer": "^1.4.2"
+    "multer": "^1.4.2",
+    "multer-gridfs-storage": "^5.0.0"
   },
   "devDependencies": {
     "nodemon": "^2.0.7"
