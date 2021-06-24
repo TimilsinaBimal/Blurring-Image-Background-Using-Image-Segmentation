@@ -22,7 +22,7 @@ app.use(morgan('dev'))
 
 
 //mongodb uri
-const mongoURI = 'mongodb+srv://shirish:blurimage@blurimage.jhw7p.mongodb.net/Image?retryWrites=true&w=majority'
+const mongoURI = ''
 
 //mongodb connection
 const conn = mongoose.createConnection(mongoURI, {useNewUrlParser: true, useUnifiedTopology: true}, () =>
