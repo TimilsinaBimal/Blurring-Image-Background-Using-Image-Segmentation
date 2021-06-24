@@ -1,8 +1,10 @@
 import tensorflow as tf
-from src.utils.layers import CNNBlock, BlockLayer
+from utils import CNNBlock, BlockLayer
 from tensorflow.keras import models, layers
 from tensorflow.keras.applications import VGG16, ResNet50
 
+
+# TODO Make models compatible with keras tuner for hyperparameter tuning for models such as Segnet,PSPNet and ImageSegmentation
 
 def VGG_Model(include_last=True):
     vgg = VGG16(
@@ -42,6 +44,7 @@ def ResNet():
     )
     outputs = resnet.get_layer("conv2_block3_out").output
     model = models.Model(inputs=resnet.inputs, outputs=outputs)
+    model.trainable = False
 
     return model
 
@@ -235,25 +238,24 @@ class DeepLab(models.Model):
         return models.Model(inputs=x, outputs=self.call(x))
 
 
+# TODO Change Architecture of Image Segmentation Model to perform better on dataset
 class ImageSegmentation(models.Model):
     def __init__(self, out_channels=2):
         super(ImageSegmentation, self).__init__()
         self.out_channels = out_channels
         self.vgg = VGG_Model(include_last=True)
-        kernel_size = [1, 3, 3, 3, 3]
-        strides = [1, 6, 12, 18]
+        kernel_size = [1, 2, 3, 4]
+        strides = [1, 1, 2, 2]
         filters = [512, 256, 128, 64]
-
+        self.att_concat = layers.Concatenate()
+        self.att_upsample = layers.Conv2DTranspose(
+            2048, kernel_size=2, strides=2, padding='same')
         for idx in range(1, 5):
-            vars(self)[f'att_concat_{idx}'] = layers.Concatenate()
-            if idx == 3:
+            if idx > 2:
                 vars(self)[f'att_upsample_{idx}'] = layers.Conv2DTranspose(
                     512, kernel_size=4, strides=1, padding='valid')
-            else:
-                vars(self)[f'att_upsample_{idx}'] = layers.Conv2DTranspose(
-                    512, kernel_size=2, strides=2, padding='same')
-
-        for idx in range(1, 5):
+            vars(self)[f'att_conv_{idx}'] = layers.Conv2D(
+                1024, kernel_size=2, strides=1, padding='same')
             vars(self)[f'conv_0_{idx}'] = layers.Conv2D(
                 1024, kernel_size=kernel_size[idx-1], strides=strides[idx-1], padding='same')
             vars(self)[f'concat_{idx}'] = layers.Concatenate()
@@ -279,22 +281,18 @@ class ImageSegmentation(models.Model):
         # Attrous Block
         attrs_layers = []
         for idx in range(1, 5):
-            attrs_layers.append(vars(self)[f'conv_0_{idx}'](x))
-        pool_layer = self.pool_1(x)
+            temp_layer = vars(self)[f'conv_0_{idx}'](x)
+            if idx > 2:
+                temp_layer = vars(self)[f'att_upsample_{idx}'](temp_layer)
+
+            temp_layer = vars(self)[f'att_conv_{idx}'](temp_layer)
+            attrs_layers.append(temp_layer)
+
         conv1 = self.conv11(x)
-
-        all_layers = [attrs_layers[-2:], [attrs_layers[1]],
-                      [pool_layer], [attrs_layers[0], conv1]]
-        for idx in range(1, 5):
-            try:
-                _concat = vars(self)[f"att_concat_{idx}"](
-                    all_layers[idx-1].append(_upsample))
-            except:
-                _concat = vars(self)[f"att_concat_{idx}"](all_layers[idx-1])
-            _upsample = vars(self)[f"att_upsample_{idx}"](_concat)
-
+        attrs_layers.append(conv1)
+        x = self.att_concat(attrs_layers)
+        x = self.att_upsample(x)
         identity_layers = identity_layers[::-1]
-        x = _upsample
         for idx in range(1, 5):
             x = vars(self)[f'concat_{idx}']([x, identity_layers[idx-1]])
             x = vars(self)[f'conv_1_{idx}'](x)
