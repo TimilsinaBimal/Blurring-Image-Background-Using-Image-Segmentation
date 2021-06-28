@@ -15,9 +15,12 @@ def VGG_Model():
         'block2_conv2',
         'block3_conv3',
         'block4_conv3',
-        'block4_pool',
+        'block5_conv3',
+        'block5_pool',
     ]
+
     output = [vgg.get_layer(layer).output for layer in output_layers]
+
     model = models.Model(inputs=vgg.input, outputs=output)
     model.trainable = False
     return model
