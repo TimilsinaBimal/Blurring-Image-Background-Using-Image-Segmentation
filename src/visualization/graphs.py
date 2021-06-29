@@ -1,8 +1,7 @@
 import matplotlib.pyplot as plt
 
 
-def plot_loss_vs_epoch(history) -> None:
-    df = history.history
+def plot_loss_vs_epoch(df) -> None:
     plt.plot(df.index + 1, df['loss'], label="Training Loss")
     plt.plot(df.index + 1, df['val_loss'], label="Validation Loss")
     plt.title("Loss vs Epoch")
@@ -13,10 +12,9 @@ def plot_loss_vs_epoch(history) -> None:
     plt.show()
 
 
-def plot_accuracy_vs_epoch(history) -> None:
-    df = history.history
+def plot_accuracy_vs_epoch(df) -> None:
     plt.plot(df.index + 1, df['accuracy'], label="Training Accuracy")
-    plt.plot(df.index + 1, df['val_loss'], label="Validation Accuracy")
+    plt.plot(df.index + 1, df['val_accuracy'], label="Validation Accuracy")
     plt.title("Accuracy vs Epoch")
     plt.xlabel("No. of epochs")
     plt.ylabel("Accuracy")

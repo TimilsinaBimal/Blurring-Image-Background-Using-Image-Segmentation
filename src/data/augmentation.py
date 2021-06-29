@@ -1,5 +1,5 @@
 import tensorflow as tf
-from tensorflow.keras.preprocessing.image import random_rotation, random_shift, random_zoom, random_shear
+from tensorflow.keras.preprocessing.image import random_rotation, random_zoom
 
 
 class DataAugmentation:

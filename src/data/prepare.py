@@ -2,7 +2,6 @@ import os
 import tensorflow as tf
 from sklearn.model_selection import train_test_split
 from data.augmentation import DataAugmentation
-import matplotlib.pyplot as plt
 
 
 class Dataset:
