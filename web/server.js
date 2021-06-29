@@ -10,19 +10,18 @@ const Grid = require('gridfs-stream')
 const app = express()
 
 //port
-const port = 3000 || process.env.port
+const port = process.env.PORT || 3000
+
+
 
 //ejs view engine 
 app.set('view engine', 'ejs')
 app.use(express.json())
-
-//static files
-//app.use(express.static(__dirname + "/public") )
 app.use(morgan('dev'))
 
 
 //mongodb uri
-const mongoURI = 'mongodb+srv://shirish:blurimage@blurimage.jhw7p.mongodb.net/Image?retryWrites=true&w=majority'
+const mongoURI = process.env.MONGODB_URI 
 
 //mongodb connection
 const conn = mongoose.createConnection(mongoURI, {useNewUrlParser: true, useUnifiedTopology: true}, () =>
@@ -30,6 +29,7 @@ const conn = mongoose.createConnection(mongoURI, {useNewUrlParser: true, useUnif
 );
 
 let gfs;
+let filename;
 
 
 conn.once('open',  () => {
@@ -45,7 +45,7 @@ conn.once('open',  () => {
           if (err) {
             return reject(err);
           }
-          const filename = buf.toString('hex') + path.extname(file.originalname);
+        filename = buf.toString('hex') + path.extname(file.originalname);
           const fileInfo = {
             filename: filename,
             bucketName: 'uploads'
@@ -79,8 +79,12 @@ app.get('/', (req, res) => {
 
 //post image
 app.post('/upload', upload.single('file'), (req, res) => {
-   //res.json({file: req.file});
    res.redirect('/')
+})
+
+//get image filename as json
+app.get('/img', (req, res) => {
+    res.json({filename})
 })
 
 //list of files
@@ -95,7 +99,7 @@ app.get('/files', (req, res) => {
     })
 })
 
-app.get('/files', (req, res) => {
+app.get('/file', (req, res) => {
     gfs.files.findOne({filename :req.file.filename}, (err, file) => {
         if (!file|| file.length == 0){
             res.status(404).json({
