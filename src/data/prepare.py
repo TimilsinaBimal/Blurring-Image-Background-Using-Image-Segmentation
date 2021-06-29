@@ -58,7 +58,7 @@ class Dataset:
 
     def augment(self, image, mask):
         augment = DataAugmentation(
-            rotation_range=20,  zoom_range=(.5, 0.5), delta=0.5, saturation_factor=0.3, subset_size=0.20)
+            rotation_range=20,  zoom_range=(0.5, 0.5), delta=0.5, saturation_factor=0.3, subset_size=0.20)
         image, mask = augment.apply(image.numpy(), mask.numpy())
         return image, mask
 

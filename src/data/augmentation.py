@@ -35,38 +35,40 @@ class DataAugmentation:
         return image, mask
 
     def adjust_light(self, image, mask):
-        if tf.random.uniform(()) < 0.25:
+        randm = tf.random.uniform(())
+        if randm < 0.25:
             image = tf.image.adjust_brightness(image, self.delta)
             mask = tf.image.adjust_brightness(mask, self.delta)
 
-        if tf.random.uniform(()) < 0.25:
+        if 0.25 < randm < 0.50:
             image = tf.image.adjust_contrast(image, self.delta)
             mask = tf.image.adjust_contrast(mask, self.delta)
 
-        if tf.random.uniform(()) < 0.25:
+        if 0.5 < randm < 0.75:
             image = tf.image.adjust_saturation(image, self.saturation_factor)
             mask = tf.image.adjust_saturation(mask, self.saturation_factor)
 
-        if tf.random.uniform(()) < 0.25:
+        if 0.75 < randm < 1:
             image = tf.image.adjust_hue(image, self.delta)
             mask = tf.image.adjust_hue(mask, self.delta)
 
         return image, mask
 
     def apply(self, image, mask):
-        if tf.random.uniform(()) < self.subset_size:
+        randm = tf.random.uniform(())
+        if randm < self.subset_size:
             image, mask = self.rotation(image, mask)
 
-        if tf.random.uniform((), minval=0, maxval=1) < self.subset_size:
+        if self.subset_size < randm < self.subset_size*2:
             image, mask = self.flip_left_right(image, mask)
 
-        if tf.random.uniform((), minval=0, maxval=1) < self.subset_size:
+        if self.subset_size*2 < randm < self.subset_size*3:
             image, mask = self.flip_top_down(image, mask)
 
-        if tf.random.uniform((), minval=0, maxval=1) < self.subset_size:
+        if self.subset_size*3 < randm < self.subset_size*4:
             image, mask = self.adjust_light(image, mask)
 
-        if tf.random.uniform((), minval=0, maxval=1) < self.subset_size:
+        if self.subset_size*4 < randm < self.subset_size*5:
             image, mask = self.zoom(image, mask)
 
         return image, mask
