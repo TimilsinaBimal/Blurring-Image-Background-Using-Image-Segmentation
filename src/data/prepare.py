@@ -2,6 +2,7 @@ import os
 import tensorflow as tf
 from sklearn.model_selection import train_test_split
 from data.augmentation import DataAugmentation
+import matplotlib.pyplot as plt
 
 
 class Dataset:
@@ -57,9 +58,8 @@ class Dataset:
 
     def augment(self, image, mask):
         augment = DataAugmentation(
-            rotation_range=4, vertical_shift=4,
-            horizontal_shift=4, zoom_range=(0.2, 0.2), shear_intensity=2, subset_size=0.20)
-        image, mask = augment.apply(image, mask)
+            rotation_range=20,  zoom_range=(.5, 0.5), delta=0.5, saturation_factor=0.3, subset_size=0.20)
+        image, mask = augment.apply(image.numpy(), mask.numpy())
         return image, mask
 
     def prepare_image(self, file_path, masks=False):
