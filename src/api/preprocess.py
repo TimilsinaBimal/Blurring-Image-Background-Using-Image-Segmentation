@@ -3,6 +3,7 @@ import json
 import numpy as np
 import tensorflow as tf
 from model import train_segnet
+from blur import resize, create_img
 
 BASE_URL = "https://backgroundblur.herokuapp.com/image/"
 IMAGE_HEIGHT = IMAGE_WIDTH = 224
@@ -39,24 +40,27 @@ def predict(img):
 
 
 def blur_image(original_image, predicted_mask):
-    pass
+    original_image = resize(img_path=original_image, url=True)
+    predicted_mask = resize(predicted_mask)
+    return create_img(original_image, predicted_mask)
 
 
-def get_results(predicted=False, blurred=False, save=False):
+def get_results(predicted=False, blurred=False):
     image_url = get_image_url(BASE_URL)
     original_image = prepare_image(image_url)
     predicted_mask = predict(original_image)
-    if predicted:
-        return predicted_mask
-    blurred_image = blur_image(original_image, predicted_mask)
-    if blurred:
-        return blurred_image
-    if save:
-        img = predicted_mask * 255
-        img = tf.cast(img, dtype=tf.dtypes.uint8)
-        img = tf.image.encode_jpeg(
-            img, quality=100)
-        tf.io.write_file('test/predicted_mask.jpg', img)
-        return
+    img = predicted_mask * 255
+    img = tf.cast(img, dtype=tf.dtypes.uint8)
+    img = tf.image.encode_jpeg(
+        img, quality=100)
+    predicted_img_path = 'results/predicted_mask.jpg'
+    tf.io.write_file(predicted_img_path, img)
 
-    return predicted_mask, blurred_image
+    if predicted:
+        return predicted_img_path
+    original_image_path, predicted_image_path, blurred_image_path = blur_image(
+        image_url, predicted_img_path)
+    if blurred:
+        return blurred_image_path
+
+    return original_image_path, predicted_image_path, blurred_image_path

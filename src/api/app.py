@@ -6,34 +6,34 @@ app = Flask(__name__)
 api = Api(app)
 
 
-class Result(Resource):
-    def __init__(self):
-        self.reqparse = reqparse.RequestParser()
-        self.reqparse.add_argument("image", type=str, required=False)
-        super(Result, self).__init__()
+# class Result(Resource):
+#     def __init__(self):
+#         self.reqparse = reqparse.RequestParser()
+#         self.reqparse.add_argument("image", type=str, required=False)
+#         super(Result, self).__init__()
 
-    def get(self):
-        predicted_mask, blurred_image = get_results()
-        args = self.reqparse.parse_args()
-        image = args["image"]
+#     def get(self):
+#         predicted_mask, blurred_image = get_results()
+#         args = self.reqparse.parse_args()
+#         image = args["image"]
 
-        if image == "predicted_mask":
-            response = {
-                "predicted_image": predicted_mask.numpy().tolist()
-            }
+#         if image == "predicted_mask":
+#             response = {
+#                 "predicted_image": predicted_mask.numpy().tolist()
+#             }
 
-        if image == "blurred_image":
-            response = {
-                "blurred_image": blurred_image.numpy().tolist()
-            }
+#         if image == "blurred_image":
+#             response = {
+#                 "blurred_image": blurred_image.numpy().tolist()
+#             }
 
-        if not image:
-            response = {
-                "predicted_image": predicted_mask.numpy().tolist(),
-                "blurred_image": blurred_image.numpy().tolist()
-            }
+#         if not image:
+#             response = {
+#                 "predicted_image": predicted_mask.numpy().tolist(),
+#                 "blurred_image": blurred_image.numpy().tolist()
+#             }
 
-        return response
+#         return response
 
 
 class URLS(Resource):
@@ -43,7 +43,7 @@ class URLS(Resource):
         self.reqparse.add_argument("image", type=str)
 
     def get(self):
-        get_results(save=True)
+        original_image_path, predicted_image_path, blurred_image_path = get_results()
         args = self.reqparse.parse_args()
         image = args["image"]
         if image == "predicted_mask":
@@ -60,7 +60,7 @@ class URLS(Resource):
         return response
 
 
-api.add_resource(Result, "/api/result")
+# api.add_resource(Result, "/api/result")
 api.add_resource(URLS, "/api/result/urls")
 
 
