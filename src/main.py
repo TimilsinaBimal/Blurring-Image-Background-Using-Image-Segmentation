@@ -1,9 +1,7 @@
 import os
 import pandas as pd
 from pathlib import Path
-import tensorflow as tf
 from data.prepare import Dataset
-from models.models import SegNet, PSPNet, UNet, DeepLab, ImageSegmentation
 from models.predict import show_predictions, create_mask, predict
 from models.train import (
     train_segnet,
@@ -13,8 +11,12 @@ from models.train import (
     train,
     train_segmentation
 )
+import tensorflow as tf
 from visualization.image import display
 from blur.blur import prepare_image, create_img
+from visualization.graphs import plot_accuracy_vs_epoch, plot_loss_vs_epoch
+from data.augmentation import DataAugmentation
+import matplotlib.pyplot as plt
 
 
 def train_model():
@@ -49,20 +51,21 @@ def train_model():
 
 
 def predict_model(show=True):
-    BEST_MODEL = "segnet"
+    BEST_MODEL = "pspnet"
     ROOT_DIR = Path(__file__).parent.parent
 
     if BEST_MODEL == "unet":
         model = train_unet()
-        model_path = os.path.join(ROOT_DIR, "models/unet/")
+        model_path = os.path.join(ROOT_DIR, "models/UNet/")
     elif BEST_MODEL == "segnet":
         model = train_segnet()
         model_path = os.path.join(ROOT_DIR, "models/SegNet/")
     elif BEST_MODEL == "pspnet":
         model = train_pspnet()
-        model_path = os.path.join(ROOT_DIR, "models/pspnet/")
+        model_path = os.path.join(ROOT_DIR, "models/PSPNet/")
 
-    model.load_weights(model_path)
+    checkpoint = tf.train.Checkpoint(model)
+    checkpoint.restore(model_path).expect_partial()
 
     if not show:
         return model
@@ -75,38 +78,48 @@ def predict_model(show=True):
 
     print("Please Choose:")
     print("1: Get Accuracy and Loss of test dataset.")
-    print("2. Get accuracy and Loss of test dataset with some results:")
+    print("2: Show Results:")
     choice = int(input("Your Choice: "))
 
     if choice == 1:
-        predict(model, test_dataset, steps)
-    elif choice == 2:
         loss, accuracy = predict(model, test_dataset, steps)
         print(f"Loss: {loss}, Accuracy: {accuracy}")
-        for image in test_dataset.take(10):
+    elif choice == 2:
+        for image in train_dataset.take(10):
             show_predictions(model, image[0][0], image[1][0])
 
 
 def blur_image():
     model = predict_model(show=False)
-    image_path = input("Type Image Path: ")
+    image_path = "src/test/test.JPG"
     img = prepare_image(image_path)
     res = model.predict(img)
-    create_img(img, res)
-    print("Image saved!")
+    res = create_mask(res)
 
 
 def test():
-    ROOT_DIR = Path(__file__).parent.parent
-    dataset = Dataset(root_dir=ROOT_DIR,
-                      batch_size=1, validation=True)
-    train_dataset, val_dataset, test_dataset = dataset.make()
-    # print(dataset.test[99])
+    df_path = "reports/DeepLab_history.csv"
+    df = pd.read_csv(df_path)
+    plot_loss_vs_epoch(df)
+    plot_accuracy_vs_epoch(df)
 
-    for idx, image in enumerate(test_dataset.take(10)):
-        # if idx == 100:
-        #     print(image)
-        display([image[0][0], image[1][0]])
+
+def augment():
+    file_path = "src/test/test.JPG"
+    img = tf.io.read_file(file_path)
+    img = tf.io.decode_image(img, channels=3, dtype=tf.float32)
+    img = tf.image.resize(img, [224, 224])
+    augment = DataAugmentation(
+        rotation_range=20,  zoom_range=(.5, 0.5), delta=0.5, saturation_factor=0.3, subset_size=0.20)
+    print(type(img.numpy()))
+    image, mask = augment.adjust_light(img.numpy(), img.numpy())
+    fig = plt.figure(frameon=False)
+    fig.set_size_inches(5, 5)
+    ax = plt.Axes(fig, [0., 0., 1., 1.])
+    ax.set_axis_off()
+    fig.add_axes(ax)
+    ax.imshow(image, aspect='auto')
+    plt.show()
 
 
 if __name__ == "__main__":
@@ -115,6 +128,7 @@ if __name__ == "__main__":
     print("2. Predict Model")
     print("3. Save Blurred Image")
     print("4. Test")
+    print("5. Augment")
     choice = int(input("Choice: "))
     if choice == 1:
         train_model()
@@ -126,3 +140,5 @@ if __name__ == "__main__":
     # FOR TESTING PURPOSES ONLY
     if choice == 4:
         test()
+    if choice == 5:
+        augment()
