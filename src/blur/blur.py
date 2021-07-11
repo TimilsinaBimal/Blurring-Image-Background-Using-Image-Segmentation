@@ -3,7 +3,6 @@ import warnings
 
 import cv2
 import numpy as np
-from tensorflow.keras.models import load_model
 
 warnings.simplefilter("ignore")
 
@@ -16,17 +15,18 @@ def make_blur(img):
     return blur
 
 
-# read image from the given path and normalize its value
-def read_img(img_path):
+# resize image
+def resize(img_path):
     batch = []
-    height = 512
-    width = 512
+    height = 224
+    width = 224
     img = cv2.imread(img_path, 1)
     img = cv2.resize(img, (height, width))
     img = img / 255.
     batch.append(img)
     batch = np.array(batch)
     return batch
+
 
 # replace mask with the BGR colours
 
@@ -51,7 +51,7 @@ def mask_blur(original_img, blur_img, predicted_img):
     green = []
     red = []
 
-    background_blur_image = np.zeros([512, 512, 3])
+    background_blur_image = np.zeros([224, 224, 3])
 
     for i in range(3):
         if i == 0:
@@ -85,13 +85,13 @@ def mask_blur(original_img, blur_img, predicted_img):
                 new.append(o)
 
         if i == 0:
-            blue = np.array(blue).reshape(512, 512)
+            blue = np.array(blue).reshape(224, 224)
             background_blur_image[:, :, 0] = blue
         if i == 1:
-            green = np.array(green).reshape(512, 512)
+            green = np.array(green).reshape(224, 224)
             background_blur_image[:, :, 1] = green
         if i == 2:
-            red = np.array(red).reshape(512, 512)
+            red = np.array(red).reshape(224, 224)
             background_blur_image[:, :, 2] = red
 
     return background_blur_image
@@ -116,15 +116,20 @@ def create_img(original_img, predicted_img):
         os.mkdir("results")
     except:
         pass
-    cv2.imwrite("results/Original.jpg", original_img[0] * 255.)
-    cv2.imwrite("results/PredictedMask.jpg", predicted_img[0] * 255.)
-    cv2.imwrite("results/BlurImg.jpg", img * 255.)
+    original_image_path = "results/Original.jpg"
+    predicted_image_path = "results/PredictedMask.jpg"
+    blurred_image_path = "results/BlurImg.jpg"
+
+    cv2.imwrite(original_image_path, original_img[0] * 255.)
+    cv2.imwrite(predicted_image_path, predicted_img[0] * 255.)
+    cv2.imwrite(blurred_image_path, img * 255.)
+    return original_image_path, predicted_image_path, blurred_image_path
 
 
 if __name__ == '__main__':
-    img_name = input("Enter Image Path or Image name: ")  # image path
-    img = read_img(img_path=img_name)
-    model = load_model('Unet_black_background_81_epochs.h5')
-    res = model.predict(img)
-    create_img(img, res)
+    image_name = input("Enter the image path ")  # input original image
+    original_image = resize(img_path=image_name)
+    predicted_mask = input("Enter the image path")  # input predicted mask
+    predicted_mask = resize(predicted_mask)
+    create_img(original_image, predicted_mask)
     print("Image saved!")
