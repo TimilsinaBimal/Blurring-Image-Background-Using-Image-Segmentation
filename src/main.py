@@ -1,8 +1,9 @@
-import os
-import pandas as pd
-from pathlib import Path
-from data.prepare import Dataset
-from models.predict import show_predictions, create_mask, predict
+import matplotlib.pyplot as plt
+from data.augmentation import DataAugmentation
+from visualization.graphs import plot_accuracy_vs_epoch, plot_loss_vs_epoch
+from blur.blur import create_img, resize
+from visualization.image import display
+import tensorflow as tf
 from models.train import (
     train_segnet,
     train_deeplab,
@@ -11,12 +12,24 @@ from models.train import (
     train,
     train_segmentation
 )
-import tensorflow as tf
-from visualization.image import display
-from blur.blur import prepare_image, create_img
-from visualization.graphs import plot_accuracy_vs_epoch, plot_loss_vs_epoch
-from data.augmentation import DataAugmentation
-import matplotlib.pyplot as plt
+from models.predict import show_predictions, create_mask, predict
+from data.prepare import Dataset
+from pathlib import Path
+import pandas as pd
+import numpy as np
+import os
+import random
+from utils.metrics import iou_score
+
+
+def prepare_image(image_path, mask=False):
+    img = tf.io.read_file(image_path)
+    if mask:
+        img = tf.io.decode_image(img, channels=1, dtype=tf.float32)
+    else:
+        img = tf.io.decode_image(img, channels=3, dtype=tf.float32)
+    img = tf.image.resize(img, [224, 224])
+    return img[np.newaxis, ...]
 
 
 def train_model():
@@ -51,7 +64,7 @@ def train_model():
 
 
 def predict_model(show=True):
-    BEST_MODEL = "pspnet"
+    BEST_MODEL = "segnet"
     ROOT_DIR = Path(__file__).parent.parent
 
     if BEST_MODEL == "unet":
@@ -85,8 +98,11 @@ def predict_model(show=True):
         loss, accuracy = predict(model, test_dataset, steps)
         print(f"Loss: {loss}, Accuracy: {accuracy}")
     elif choice == 2:
+        ious = []
         for image in train_dataset.take(10):
-            show_predictions(model, image[0][0], image[1][0])
+            iou = show_predictions(model, image[0][0], image[1][0])
+            ious.append(iou)
+        print(f"Average IOU: {sum(ious)/ len(ious)}")
 
 
 def blur_image():
@@ -95,10 +111,52 @@ def blur_image():
     img = prepare_image(image_path)
     res = model.predict(img)
     res = create_mask(res)
+    img = res * 255
+    img = tf.cast(img, dtype=tf.dtypes.uint8)
+    img = tf.image.encode_jpeg(
+        img, quality=100)
+    predicted_img_path = 'results/predicted_mask.jpg'
+    tf.io.write_file(predicted_img_path, img)
+    original_image = resize(image_path)
+    predicted_mask = resize(predicted_img_path)
+    create_img(original_image, predicted_mask)
+
+
+def show_batch_blur():
+    size = 10
+    base_image_dir = 'data/raw/images'
+    base_mask_dir = 'data/raw/masks'
+    images_dir = os.listdir(base_image_dir)
+    masks_dir = os.listdir(base_mask_dir)
+    images = []
+    masks = []
+    model = predict_model(show=False)
+    for _ in range(size):
+        randn = random.choice(range(len(images_dir)))
+        images.append(os.path.join(base_image_dir, images_dir[randn]))
+        masks.append(os.path.join(base_mask_dir, masks_dir[randn]))
+    for idx in range(len(images)):
+        image_path = images[idx]
+        true_mask_path = masks[idx]
+        img = prepare_image(image_path)
+        res = model.predict(img)
+        res = create_mask(res)
+        mask = prepare_image(true_mask_path, mask=True)
+        iou = iou_score(mask[0], res)
+        img = res * 255
+        img = tf.cast(img, dtype=tf.dtypes.uint8)
+        img = tf.image.encode_jpeg(
+            img, quality=100)
+        predicted_mask_path = f'results/predicted_mask_{idx}.jpg'
+        tf.io.write_file(predicted_mask_path, img)
+        original_image = resize(image_path)
+        predicted_mask = resize(predicted_mask_path)
+        true_mask = resize(true_mask_path)
+        create_img(original_image, predicted_mask, true_mask, iou)
 
 
 def test():
-    df_path = "reports/DeepLab_history.csv"
+    df_path = "reports/SegNet_history.csv"
     df = pd.read_csv(df_path)
     plot_loss_vs_epoch(df)
     plot_accuracy_vs_epoch(df)
@@ -127,8 +185,8 @@ if __name__ == "__main__":
     print("1. Train Model")
     print("2. Predict Model")
     print("3. Save Blurred Image")
-    print("4. Test")
-    print("5. Augment")
+    print("4. Blur Batch Image")
+    print("5. PLOT GRAPH")
     choice = int(input("Choice: "))
     if choice == 1:
         train_model()
@@ -139,6 +197,6 @@ if __name__ == "__main__":
         blur_image()
     # FOR TESTING PURPOSES ONLY
     if choice == 4:
-        test()
+        show_batch_blur()
     if choice == 5:
-        augment()
+        test()
