@@ -1,5 +1,6 @@
 import tensorflow as tf
 from visualization.image import display
+from utils.metrics import iou_score
 
 
 def create_mask(pred_mask):
@@ -8,9 +9,13 @@ def create_mask(pred_mask):
     return pred_mask[0]
 
 
-def show_predictions(model, image, mask):
-    prediction = model.predict(image[tf.newaxis, ...])
-    display([image, mask, create_mask(prediction)])
+def show_predictions(model, image, mask, iou=0):
+    original = image[tf.newaxis, ...]
+    prediction = model.predict(original)
+    predicted_mask = create_mask(prediction)
+    iou = iou_score(mask, predicted_mask)
+    display([image, mask, predicted_mask], iou)
+    return iou
 
 
 def predict(model, dataset, steps):
