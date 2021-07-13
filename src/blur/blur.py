@@ -1,11 +1,9 @@
+from visualization.image import display_blur
 import os
 import warnings
-
 import cv2
 import numpy as np
-
 warnings.simplefilter("ignore")
-
 # blur image
 
 
@@ -99,18 +97,23 @@ def mask_blur(original_img, blur_img, predicted_img):
 # creates blurred background and stores inside results folder
 
 
-def create_img(original_img, predicted_img):
+def create_img(original_img, predicted_img, true_mask=None, iou=0):
     blur_img = make_blur(original_img[0])  # original blurred image
 
     # final background blurred image
     img = mask_blur(original_img[0], blur_img, predicted_img[0])
 
-    cv2.imshow("original image", original_img[0])
-    cv2.waitKeyEx(0)
-    cv2.imshow("predicted mask", predicted_img[0])
-    cv2.waitKeyEx(0)
-    cv2.imshow("Blur image", img)
-    cv2.waitKeyEx(0)
+    # cv2.imshow("original image", original_img[0])
+    # cv2.waitKeyEx(0)
+    # cv2.imshow("predicted mask", predicted_img[0])
+    # cv2.waitKeyEx(0)
+    # cv2.imshow("Blur image", img)
+    # cv2.waitKeyEx(0)
+    try:
+        display_blur([original_img[0], true_mask[0],
+                     predicted_img[0], img], iou)
+    except:
+        pass
 
     try:
         os.mkdir("results")
@@ -126,10 +129,10 @@ def create_img(original_img, predicted_img):
     return original_image_path, predicted_image_path, blurred_image_path
 
 
-if __name__ == '__main__':
-    image_name = input("Enter the image path ")  # input original image
-    original_image = resize(img_path=image_name)
-    predicted_mask = input("Enter the image path")  # input predicted mask
-    predicted_mask = resize(predicted_mask)
-    create_img(original_image, predicted_mask)
-    print("Image saved!")
+# if __name__ == '__main__':
+#     image_name = input("Enter the image path ")  # input original image
+#     original_image = resize(img_path=image_name)
+#     predicted_mask = input("Enter the image path")  # input predicted mask
+#     predicted_mask = resize(predicted_mask)
+#     create_img(original_image, predicted_mask)
+#     print("Image saved!")
